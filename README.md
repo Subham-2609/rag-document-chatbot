@@ -76,12 +76,8 @@ rag-document-chatbot/
 
 ## Next steps / ideas to extend it
 
-- Add streaming responses (Groq supports streaming — nice UX win)
-- Add a `/api/documents/{source}` DELETE endpoint to remove a document
-- Swap in reranking (e.g. a cross-encoder) for better retrieval quality
-- Add authentication for multi-user or public hosting
+- Adding streaming responses
+- Adding a DELETE endpoint to remove a document
+- Swap in reranking for better retrieval quality
+- Adding authentication for multi-user or public hosting
 - Write a short evaluation set (10-15 Q&A pairs) and report retrieval accuracy
-
-## License
-
-MIT
