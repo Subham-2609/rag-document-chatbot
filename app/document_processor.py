@@ -1,6 +1,7 @@
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional, Tuple
+
 from pypdf import PdfReader
 import docx
 
@@ -8,12 +9,12 @@ import docx
 @dataclass
 class Chunk:
     text: str
-    source: str          # original filename
-    chunk_id: int         # index within the document
-    page: int | None = None
+    source: str
+    chunk_id: int
+    page: Optional[int] = None
 
 
-def load_pdf(path: Path) -> List[tuple[str, int]]:
+def load_pdf(path: Path) -> List[Tuple[str, Optional[int]]]:
     """Returns list of (page_text, page_number)."""
     reader = PdfReader(str(path))
     pages = []
@@ -24,15 +25,15 @@ def load_pdf(path: Path) -> List[tuple[str, int]]:
     return pages
 
 
-def load_docx(path: Path) -> List[tuple[str, int]]:
+def load_docx(path: Path) -> List[Tuple[str, Optional[int]]]:
     document = docx.Document(str(path))
     full_text = "\n".join(p.text for p in document.paragraphs if p.text.strip())
-    return [(full_text, None)]
+    return [(full_text, None)] if full_text.strip() else []
 
 
-def load_txt(path: Path) -> List[tuple[str, int]]:
+def load_txt(path: Path) -> List[Tuple[str, Optional[int]]]:
     text = path.read_text(encoding="utf-8", errors="ignore")
-    return [(text, None)]
+    return [(text, None)] if text.strip() else []
 
 
 LOADERS = {
@@ -42,40 +43,35 @@ LOADERS = {
 }
 
 
-def load_document(path: Path) -> List[tuple[str, int]]:
+def load_document(path: Path) -> List[Tuple[str, Optional[int]]]:
     ext = path.suffix.lower()
     if ext not in LOADERS:
         raise ValueError(f"Unsupported file type: {ext}")
     return LOADERS[ext](path)
 
 
-def chunk_text(
-    text: str,
-    chunk_size: int = 1000,
-    chunk_overlap: int = 150,
-) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 150) -> List[str]:
     """
-    Simple recursive-ish splitter: tries to split on paragraph breaks first,
-    falling back to raw character windows. This mirrors what LangChain's
-    RecursiveCharacterTextSplitter does, without the dependency weight.
+    Simple recursive-ish splitter: tries paragraph breaks first, falling back
+    to raw character windows. Mirrors LangChain's RecursiveCharacterTextSplitter
+    without the dependency weight.
     """
     if len(text) <= chunk_size:
         return [text] if text.strip() else []
 
     separators = ["\n\n", "\n", ". ", " "]
-    chunks: List[str] = []
 
     def split(segment: str, seps: List[str]) -> List[str]:
         if len(segment) <= chunk_size:
             return [segment] if segment.strip() else []
         if not seps:
-            # hard cut with overlap
             result = []
             start = 0
+            step = max(chunk_size - chunk_overlap, 1)  # guard against infinite loop
             while start < len(segment):
                 end = start + chunk_size
                 result.append(segment[start:end])
-                start = end - chunk_overlap
+                start += step
             return result
 
         sep, rest_seps = seps[0], seps[1:]
@@ -98,8 +94,7 @@ def chunk_text(
             result.append(buffer)
         return result
 
-    chunks = split(text, separators)
-    return [c.strip() for c in chunks if c.strip()]
+    return [c.strip() for c in split(text, separators) if c.strip()]
 
 
 def process_file(path: Path, chunk_size: int = 1000, chunk_overlap: int = 150) -> List[Chunk]:
