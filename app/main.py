@@ -1,14 +1,3 @@
-"""
-main.py
--------
-FastAPI app exposing:
-  POST /api/upload   - upload a document, chunk it, embed it, store it
-  POST /api/chat     - ask a question, get a grounded answer + sources
-  POST /api/reset   - clear chat history
-  GET  /api/documents - list ingested documents
-  GET  /             - serves the frontend
-"""
-
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -145,3 +134,22 @@ async def root():
     return FileResponse(
         str(STATIC_DIR / "index.html")
     )
+
+@app.delete("/api/documents/{filename}")
+async def delete_document(filename: str):
+    store = get_vector_store()
+
+    deleted = store.delete_by_source(filename)
+
+    if deleted == 0:
+        raise HTTPException(404, f"No chunks found for '{filename}'.")
+
+    file_path = UPLOAD_DIR / filename
+    if file_path.exists():
+        file_path.unlink()
+
+    return {
+        "filename": filename,
+        "chunks_deleted": deleted,
+        "total_chunks_in_store": store.document_count(),
+    }

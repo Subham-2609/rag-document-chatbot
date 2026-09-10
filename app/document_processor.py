@@ -1,12 +1,3 @@
-"""
-document_processor.py
-----------------------
-Handles loading raw files (PDF, DOCX, TXT) and splitting them into
-overlapping text chunks ready for embedding.
-
-No external API calls here — everything runs locally and for free.
-"""
-
 from pathlib import Path
 from dataclasses import dataclass
 from typing import List

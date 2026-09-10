@@ -1,10 +1,3 @@
-"""
-vector_store.py
-----------------
-Wraps ChromaDB + a local sentence-transformers embedding model.
-Both are free and run without any API key.
-"""
-
 from pathlib import Path
 from typing import List
 import chromadb
@@ -14,8 +7,6 @@ from app.document_processor import Chunk
 VECTORSTORE_DIR = Path(__file__).resolve().parent.parent / "data" / "vectorstore"
 VECTORSTORE_DIR.mkdir(parents=True, exist_ok=True)
 
-# all-MiniLM-L6-v2: small, fast, free, runs on CPU, good enough quality for a
-# resume-project RAG system. Downloads once (~80MB) then runs locally.
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 
 
@@ -40,6 +31,15 @@ class VectorStore:
             for c in chunks
         ]
         self.collection.add(ids=ids, documents=documents, metadatas=metadatas)
+
+    def delete_by_source(self, source: str) -> int:
+        """Delete all chunks belonging to a given source filename. Returns count deleted."""
+        matches = self.collection.get(where={"source": source})
+        ids = matches.get("ids", [])
+        if not ids:
+            return 0
+        self.collection.delete(ids=ids)
+        return len(ids)
 
     def similarity_search(self, query: str, k: int = 4):
         results = self.collection.query(query_texts=[query], n_results=k)

@@ -132,9 +132,33 @@ async function refreshDocs() {
   list.innerHTML = '';
   data.sources.forEach(s => {
     const li = document.createElement('li');
-    li.textContent = s;
+    li.style.display = 'flex';
+    li.style.justifyContent = 'space-between';
+    li.style.alignItems = 'center';
+    li.innerHTML = `<span>${s}</span>`;
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕';
+    delBtn.style.background = 'transparent';
+    delBtn.style.color = 'var(--muted)';
+    delBtn.style.padding = '2px 6px';
+    delBtn.style.fontSize = '12px';
+    delBtn.onclick = () => deleteDoc(s);
+    li.appendChild(delBtn);
     list.appendChild(li);
   });
+}
+
+async function deleteDoc(filename) {
+  if (!confirm(`Delete ${filename}?`)) return;
+  try {
+    const res = await fetch(`/api/documents/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Delete failed');
+    addMessage(`🗑️ Removed <b>${filename}</b> (${data.chunks_deleted} chunks).`, 'bot');
+    refreshDocs();
+  } catch (e) {
+    addMessage(`❌ ${e.message}`, 'bot');
+  }
 }
 
 fileInput.addEventListener('change', async () => {
